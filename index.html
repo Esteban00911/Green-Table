@@ -31,6 +31,64 @@
           <button id="testCloudBtn" type="button" class="button button-secondary button-wide">Tester la connexion</button>
           <p id="cloudMessage" class="fine-print" role="status">En attente du test.</p>
         </section>
+        <section class="panel online-panel" id="onlinePanel">
+          <div class="panel-title-row"><h2>Jouer en ligne</h2><span id="authStatus" class="status-pill">Non connecté</span></div>
+          <p class="fine-print">Connecte-toi pour créer une partie ou rejoindre tes amis avec un code. Tes boutons personnalisés seront enregistrés sur ton compte.</p>
+          <div id="authForms" class="online-grid">
+            <form id="signInForm" class="online-card">
+              <h3>Connexion</h3>
+              <label>Adresse e-mail<input id="loginEmail" type="email" autocomplete="email" required></label>
+              <label>Mot de passe<input id="loginPassword" type="password" autocomplete="current-password" minlength="6" required></label>
+              <button class="button button-primary button-wide" type="submit">Se connecter</button>
+            </form>
+            <form id="signUpForm" class="online-card">
+              <h3>Créer un compte</h3>
+              <label>Nom affiché<input id="signupName" maxlength="24" autocomplete="nickname" required></label>
+              <label>Adresse e-mail<input id="signupEmail" type="email" autocomplete="email" required></label>
+              <label>Mot de passe<input id="signupPassword" type="password" autocomplete="new-password" minlength="6" required></label>
+              <button class="button button-secondary button-wide" type="submit">Créer mon compte</button>
+            </form>
+          </div>
+          <div id="onlineLoggedIn" class="hidden">
+            <div class="logged-in-row"><strong id="loggedInName">Joueur</strong><button id="signOutBtn" type="button" class="text-button">Se déconnecter</button></div>
+            <div class="online-grid">
+              <form id="createOnlineForm" class="online-card">
+                <h3>Créer une partie</h3>
+                <label>Nom de la partie<input id="onlineRoomName" maxlength="40" value="Partie entre amis"></label>
+                <div class="form-grid">
+                  <label>Petite blinde<input id="onlineSmallBlind" type="number" min="1" value="25" required></label>
+                  <label>Grosse blinde<input id="onlineBigBlind" type="number" min="2" value="50" required></label>
+                  <label>Tapis de départ<input id="onlineStartingStack" type="number" min="100" value="2000" required></label>
+                  <label>Joueurs max<select id="onlineMaxPlayers"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option selected>9</option><option>10</option></select></label>
+                </div>
+                <button class="button button-primary button-wide" type="submit">Créer la partie en ligne</button>
+              </form>
+              <form id="joinOnlineForm" class="online-card">
+                <h3>Rejoindre une partie</h3>
+                <label>Code de la partie<input id="joinRoomCode" maxlength="6" placeholder="Ex. A1B2C3" autocapitalize="characters" required></label>
+                <button class="button button-secondary button-wide" type="submit">Rejoindre</button>
+              </form>
+            </div>
+            <div class="online-card preferences-card">
+              <h3>Mes boutons personnels</h3>
+              <p class="fine-print">Ces réglages sont enregistrés sur ton compte et te suivront sur tes appareils.</p>
+              <div class="form-grid">
+                <label>Bet (% du pot)<input id="cloudBetPresets" value="30, 50, 75" placeholder="30, 50, 75"></label>
+                <label>Raise (× mise)<input id="cloudRaisePresets" value="2, 3" placeholder="2, 3"></label>
+              </div>
+              <button id="savePreferencesBtn" type="button" class="button button-ghost">Enregistrer mes boutons</button>
+              <span id="preferencesMessage" class="fine-print" role="status"></span>
+            </div>
+          </div>
+          <div id="onlineLobby" class="online-card hidden" aria-live="polite">
+            <div class="panel-title-row"><h3 id="lobbyTitle">Lobby</h3><button id="refreshLobbyBtn" class="text-button" type="button">Actualiser</button></div>
+            <p>Code à partager : <strong id="lobbyCode" class="room-code"></strong> <button id="copyRoomCodeBtn" class="text-button" type="button">Copier</button></p>
+            <ol id="lobbyPlayers" class="lobby-players"></ol>
+            <p id="lobbyStatus" class="fine-print">En attente des joueurs.</p>
+            <button id="leaveLobbyBtn" class="button button-ghost" type="button">Quitter le lobby</button>
+          </div>
+          <p id="onlineMessage" class="fine-print" role="status"></p>
+        </section>
         <div class="hero">
           <div class="eyebrow">VOTRE TABLE, VOS RÈGLES</div>
           <h1>La partie se joue<br><em>autour de la table.</em></h1>
@@ -118,6 +176,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="supabase-client.js"></script>
+  <script src="online-auth.js"></script>
   <script src="poker-rules.js"></script>
   <script src="script.js"></script>
 </body>

@@ -145,3 +145,17 @@ body{background:#111914}
 #cloudConnectionPanel { margin: 0 0 1.25rem; }
 #cloudConnectionPanel .status-pill { display:inline-flex; align-items:center; border:1px solid var(--line, #d8ded9); border-radius:999px; padding:.3rem .65rem; font-size:.75rem; color:var(--muted, #68756e); }
 #cloudMessage { margin:.65rem 0 0; }
+
+/* Online account and lobby */
+.online-panel { margin-bottom: 34px; }
+.online-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:16px; }
+.online-card { min-width:0; padding:16px; border:1px solid var(--line, #35483d); border-radius:14px; background:rgba(4,20,15,.42); }
+.online-card h3 { margin:0 0 14px; }
+.online-card label { display:flex; flex-direction:column; gap:7px; margin:10px 0; font-size:.88rem; }
+.online-card input, .online-card select { width:100%; min-width:0; }
+.logged-in-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; }
+.preferences-card { margin-top:14px; }
+.room-code { font-size:1.5rem; letter-spacing:.18em; color:var(--accent, #c7d99b); }
+.lobby-players { padding-left:22px; }
+.lobby-players li { padding:7px 0; border-bottom:1px solid rgba(180,200,180,.12); }
+@media(max-width:720px) { .online-grid { grid-template-columns:1fr; } }
