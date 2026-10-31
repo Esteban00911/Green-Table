@@ -7,12 +7,47 @@
     dealer: 0, phaseIndex: 0, handNumber: 1, smallBlind: 25, bigBlind: 50, turnTimerSeconds: 30,
     startingStack: 2000, chipLabel: "jetons", gameName: "Partie du vendredi",
     history: [], snapshots: [], handClosed: false, roundActions: new Set(),
-    lastAggressor: null, actionCount: 0
+    lastAggressor: null, actionCount: 0, betPresets: [30, 50, 75], raisePresets: [2, 3]
   };
   let nextPlayerId = 1;
   let timerInterval = null, timerRemaining = 0, timerKey = "", timerExpiredForKey = "";
   const money = n => Math.max(0, Math.floor(n)).toLocaleString("fr-FR");
+  const bb = n => `${(Math.max(0, Number(n) || 0) / state.bigBlind).toLocaleString("fr-FR", {maximumFractionDigits: 1})} BB`;
   const unit = () => state.chipLabel.toUpperCase();
+  function parsePresets(value, fallback, min, max) {
+    const values = String(value).split(/[;,\s]+/).map(Number).filter(v => Number.isFinite(v) && v >= min && v <= max);
+    return [...new Set(values)].slice(0, 5).length ? [...new Set(values)].slice(0, 5) : fallback;
+  }
+  function setRaiseAmount(value) {
+    const input = $("raiseAmount"), numeric = $("raiseAmountNumber");
+    const min = Number(input.min), max = Number(input.max);
+    const safe = Math.max(min, Math.min(max, Math.round(Number(value) || min)));
+    input.value = String(safe); numeric.value = String(safe);
+    $("raiseAmountLabel").textContent = money(safe);
+    $("raiseBtn").textContent = state.currentBet > 0 ? `Relancer à ${money(safe)}` : `Miser ${money(safe)}`;
+  }
+  function renderQuickButtons(validTurn, maxTotal, minTotal) {
+    const wrap = $("quickBetButtons"); wrap.innerHTML = "";
+    const isRaise = state.currentBet > 0;
+    const presets = isRaise ? state.raisePresets : state.betPresets;
+    presets.forEach(value => {
+      const button = document.createElement("button"); button.type = "button"; button.className = "quick-bet-button";
+      let target;
+      if (isRaise) {
+        target = Math.round(state.currentBet * value);
+        button.textContent = `${value}×`;
+        button.title = `Relancer à ${money(target)} ${state.chipLabel}`;
+      } else {
+        target = Math.round(Math.max(state.pot, state.bigBlind) * value / 100);
+        button.textContent = `${value}% pot`;
+        button.title = `Miser ${money(target)} ${state.chipLabel}`;
+      }
+      target = Math.max(minTotal, Math.min(maxTotal, target));
+      button.disabled = !validTurn || $("raiseBtn").disabled || target <= state.currentBet || target <= (current()?.streetBet || 0);
+      button.addEventListener("click", () => setRaiseAmount(target));
+      wrap.append(button);
+    });
+  }
   const active = () => state.players.filter(p => !p.folded && !p.eliminated);
   const canAct = () => state.players.filter(p => !p.folded && !p.eliminated && p.stack > 0);
   function calculatePots() { return PokerRules.calculateSidePots(state.players); }
@@ -85,6 +120,9 @@
     state.startingStack = stack; state.smallBlind = sb; state.bigBlind = bb;
     state.chipLabel = $("chipLabel").value; state.gameName = $("gameName").value.trim() || "Partie de poker";
     state.turnTimerSeconds = Number($("turnTimer").value) || 0;
+    state.betPresets = parsePresets($("betPresets").value, [30, 50, 75], 1, 300);
+    state.raisePresets = parsePresets($("raisePresets").value, [2, 3], 1.1, 10);
+    try { localStorage.setItem("tableVertePresets", JSON.stringify({bet: state.betPresets, raise: state.raisePresets})); } catch (_) {}
     state.players = names.map(playerTemplate); state.dealer = 0; state.handNumber = 1;
     state.history = []; state.snapshots = []; $("setupScreen").classList.add("hidden"); $("gameScreen").classList.remove("hidden");
     startHand(true);
@@ -322,10 +360,12 @@
   function render() {
     $("gameNameLabel").textContent = state.gameName.toLocaleUpperCase();
     $("phaseLabel").textContent = PHASES[state.phaseIndex] || "Abattage";
-    $("potValue").textContent = money(state.pot); $("potUnit").textContent = unit();
-    $("toCallValue").textContent = `${money(Math.max(0, state.currentBet - (current()?.streetBet || 0)))} ${state.chipLabel}`;
-    $("currentBetValue").textContent = `${money(state.currentBet)} ${state.chipLabel}`;
+    $("potValue").textContent = money(state.pot); $("potUnit").textContent = unit(); $("potBb").textContent = bb(state.pot);
+    const callAmount = Math.max(0, state.currentBet - (current()?.streetBet || 0));
+    $("toCallValue").textContent = `${money(callAmount)} ${state.chipLabel}`; $("toCallBb").textContent = bb(callAmount);
+    $("currentBetValue").textContent = `${money(state.currentBet)} ${state.chipLabel}`; $("currentBetBb").textContent = bb(state.currentBet);
     $("blindValues").textContent = `${money(state.smallBlind)} / ${money(state.bigBlind)}`;
+    $("blindBb").textContent = `${bb(state.smallBlind)} / ${bb(state.bigBlind)}`;
     $("seats").innerHTML = "";
     const n = state.players.length;
     state.players.forEach((p, i) => {
@@ -337,9 +377,10 @@
       seat.style.top = `${50 + 39 * Math.sin(angle)}%`;
       const name = document.createElement("div"); name.className = "seat-name"; name.textContent = p.name;
       const stack = document.createElement("div"); stack.className = "seat-stack"; stack.textContent = money(p.stack);
+      const stackBb = document.createElement("div"); stackBb.className = "seat-bb"; stackBb.textContent = bb(p.stack);
       const detail = document.createElement("div"); detail.className = "seat-detail";
-      detail.textContent = p.folded ? "Couché" : p.eliminated ? "Éliminé" : p.allIn ? "À tapis" : p.streetBet ? `Mise : ${money(p.streetBet)}` : "En jeu";
-      seat.append(name, stack, detail);
+      detail.textContent = p.folded ? "Couché" : p.eliminated ? "Éliminé" : p.allIn ? "À tapis" : p.streetBet ? `Mise : ${money(p.streetBet)} · ${bb(p.streetBet)}` : "En jeu";
+      seat.append(name, stack, stackBb, detail);
       if (p.dealer) { const b = document.createElement("span"); b.className = "seat-badge dealer"; b.textContent = "D · DONNEUR"; seat.append(b); }
       else if (p.smallBlind) { const b = document.createElement("span"); b.className = "seat-badge"; b.textContent = "SB"; seat.append(b); }
       else if (p.bigBlind) { const b = document.createElement("span"); b.className = "seat-badge"; b.textContent = "BB"; seat.append(b); }
@@ -359,6 +400,8 @@
     const raiseInput = $("raiseAmount"); raiseInput.min = String(Math.max(1, Math.min(minTotal, maxTotal))); raiseInput.max = String(Math.max(raiseInput.min, maxTotal));
     raiseInput.step = String(Math.max(1, Math.min(state.bigBlind, 100)));
     if (Number(raiseInput.value) < Number(raiseInput.min) || Number(raiseInput.value) > Number(raiseInput.max)) raiseInput.value = raiseInput.min;
+    $("raiseAmountNumber").min = raiseInput.min; $("raiseAmountNumber").max = raiseInput.max;
+    $("raiseAmountNumber").value = raiseInput.value;
     $("raiseAmountLabel").textContent = money(Number(raiseInput.value));
     $("raiseLabel").textContent = state.currentBet > 0 ? "Mise totale à atteindre" : "Montant de la mise";
     $("raiseMinLabel").textContent = `Min. ${money(Number(raiseInput.min))}`;
@@ -367,6 +410,8 @@
     const raiseReopened = validTurn && PokerRules.isRaiseReopened(p, state.currentBet);
     $("raiseBtn").disabled = !validTurn || !raiseReopened || Number(raiseInput.max) <= state.currentBet || Number(raiseInput.max) <= p?.streetBet;
     $("raiseAmount").disabled = !validTurn || $("raiseBtn").disabled;
+    $("raiseAmountNumber").disabled = !validTurn || $("raiseBtn").disabled;
+    renderQuickButtons(validTurn, Number(raiseInput.max), Number(raiseInput.min));
     $("nextStreetBtn").classList.add("hidden");
     $("endHandBtn").classList.toggle("hidden", !state.handClosed);
     $("undoBtn").disabled = state.snapshots.length === 0;
@@ -452,6 +497,14 @@
   $("checkCallBtn").addEventListener("click", checkCall);
   $("raiseBtn").addEventListener("click", raise);
   $("raiseAmount").addEventListener("input", () => {
+    $("raiseAmountNumber").value = $("raiseAmount").value;
+    $("raiseAmountLabel").textContent = money(Number($("raiseAmount").value));
+    $("raiseBtn").textContent = state.currentBet > 0 ? `Relancer à ${money(Number($("raiseAmount").value))}` : `Miser ${money(Number($("raiseAmount").value))}`;
+  });
+  $("raiseAmountNumber").addEventListener("input", () => {
+    const value = Number($("raiseAmountNumber").value);
+    if (!Number.isFinite(value)) return;
+    $("raiseAmount").value = String(Math.max(Number($("raiseAmount").min), Math.min(Number($("raiseAmount").max), value)));
     $("raiseAmountLabel").textContent = money(Number($("raiseAmount").value));
     $("raiseBtn").textContent = state.currentBet > 0 ? `Relancer à ${money(Number($("raiseAmount").value))}` : `Miser ${money(Number($("raiseAmount").value))}`;
   });
@@ -465,6 +518,13 @@
   $("cancelSettleBtn").addEventListener("click", () => $("settleDialog").close());
   $("clearHistoryBtn").addEventListener("click", () => { state.history = []; renderHistory(); });
   renderPlayerInputs();
+  try {
+    const saved = JSON.parse(localStorage.getItem("tableVertePresets") || "null");
+    if (saved) {
+      if (Array.isArray(saved.bet)) $("betPresets").value = saved.bet.join(", ");
+      if (Array.isArray(saved.raise)) $("raisePresets").value = saved.raise.join(", ");
+    }
+  } catch (_) {}
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
     window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
   }

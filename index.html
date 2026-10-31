@@ -25,6 +25,12 @@
 
     <main>
       <section id="setupScreen" class="screen setup-screen">
+        <section class="panel" id="cloudConnectionPanel" aria-live="polite">
+          <div class="panel-title-row"><h2>Connexion en ligne</h2><span id="cloudStatus" class="status-pill">Non vérifiée</span></div>
+          <p class="fine-print">Vérifie que Table Verte peut communiquer avec son serveur. La connexion des joueurs sera ajoutée à l'étape suivante.</p>
+          <button id="testCloudBtn" type="button" class="button button-secondary button-wide">Tester la connexion</button>
+          <p id="cloudMessage" class="fine-print" role="status">En attente du test.</p>
+        </section>
         <div class="hero">
           <div class="eyebrow">VOTRE TABLE, VOS RÈGLES</div>
           <h1>La partie se joue<br><em>autour de la table.</em></h1>
@@ -39,6 +45,11 @@
             <label>Grosse blinde<input id="bigBlind" type="number" min="2" step="1" value="50" required></label>
             <label>Devise des jetons<select id="chipLabel"><option value="jetons">Jetons</option><option value="points">Points</option></select></label>
             <label>Temps par tour<select id="turnTimer"><option value="0">Sans chrono</option><option value="15">15 secondes</option><option value="20">20 secondes</option><option value="30" selected>30 secondes</option><option value="45">45 secondes</option><option value="60">60 secondes</option></select></label>
+          </div>
+          <div class="preset-settings">
+            <div class="setup-section-heading"><h3>Boutons rapides personnalisés</h3><span>Réglages de cet appareil</span></div>
+            <label>Tailles de mise en % du pot<input id="betPresets" type="text" value="30, 50, 75" placeholder="30, 50, 75"><small>Exemple : 30, 50, 75</small></label>
+            <label>Tailles de relance × mise actuelle<input id="raisePresets" type="text" value="2, 3" placeholder="2, 3"><small>Exemple : 2, 3 (relancer à 2× ou 3× la mise actuelle)</small></label>
           </div>
           <div class="setup-section-heading"><h3>Joueurs</h3><span id="playerCountLabel">4 joueurs</span></div>
           <div id="playerInputs" class="player-inputs"></div>
@@ -60,6 +71,7 @@
               <div class="pot-caption">POT TOTAL</div>
               <div class="pot-value" id="potValue">0</div>
               <div class="pot-unit" id="potUnit">JETONS</div>
+              <div class="bb-equivalent" id="potBb">0 BB</div>
               <div class="community-cards" id="communityCards" aria-label="Cartes communes">
                 <div class="playing-card card-back">♠</div><div class="playing-card card-back">♠</div><div class="playing-card card-back">♠</div><div class="playing-card card-back">♠</div><div class="playing-card card-back">♠</div>
               </div>
@@ -70,9 +82,9 @@
         </div>
         <div class="quick-instruction"><span>↗</span> Passez le téléphone au joueur indiqué, puis choisissez son action.</div>
         <div class="game-meta">
-          <div><span class="meta-label">À payer pour suivre</span><strong id="toCallValue">0</strong></div>
-          <div><span class="meta-label">Mise à égaler</span><strong id="currentBetValue">0</strong></div>
-          <div><span class="meta-label">Blinds</span><strong id="blindValues">25 / 50</strong></div>
+          <div><span class="meta-label">À payer pour suivre</span><strong id="toCallValue">0</strong><small class="bb-equivalent" id="toCallBb">0 BB</small></div>
+          <div><span class="meta-label">Mise à égaler</span><strong id="currentBetValue">0</strong><small class="bb-equivalent" id="currentBetBb">0 BB</small></div>
+          <div><span class="meta-label">Blinds</span><strong id="blindValues">25 / 50</strong><small class="bb-equivalent" id="blindBb">0,5 / 1 BB</small></div>
         </div>
         <section class="panel action-panel">
           <div class="turn-header"><div><span class="eyebrow" id="turnEyebrow">AU TOUR DE</span><h2 id="turnPlayerName">Joueur</h2><div class="turn-subtitle" id="turnSubtitle">Choisissez votre action</div></div><div class="turn-status"><span class="turn-number" id="turnPosition">1 / 4</span><div id="timerBox" class="timer-box hidden"><span class="timer-icon">◷</span><strong id="timerValue">30</strong><span>s</span></div></div></div>
@@ -82,7 +94,9 @@
           </div>
           <div class="raise-area">
             <div class="raise-topline"><label for="raiseAmount" id="raiseLabel">Mise totale</label><strong id="raiseAmountLabel">100</strong></div>
-            <input id="raiseAmount" type="range" min="50" max="2000" step="25" value="100">
+            <div id="quickBetButtons" class="quick-bet-buttons" aria-label="Tailles de mise rapides"></div>
+            <div class="amount-entry"><label for="raiseAmount">Curseur</label><input id="raiseAmount" type="range" min="50" max="2000" step="25" value="100"></div>
+            <div class="amount-entry"><label for="raiseAmountNumber">Ou saisir un montant</label><input id="raiseAmountNumber" type="number" inputmode="numeric" min="1" step="1" value="100"></div>
             <div class="range-ends"><span id="raiseMinLabel">Min. 50</span><span id="raiseMaxLabel">Max. 2000</span></div>
             <button id="raiseBtn" class="button button-primary button-wide raise-main-button">Miser 100</button>
           </div>
@@ -101,6 +115,9 @@
     <div class="modal-icon">🏆</div><h2>Attribuer le pot</h2><p id="settleText">Choisissez le ou les gagnants de la main.</p>
     <form id="settleForm"><div id="winnerChoices" class="winner-choices"></div><button class="button button-primary button-wide" type="submit">Attribuer le pot</button><button id="cancelSettleBtn" type="button" class="button button-ghost button-wide">Annuler</button></form>
   </dialog>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="supabase-client.js"></script>
   <script src="poker-rules.js"></script>
   <script src="script.js"></script>
 </body>

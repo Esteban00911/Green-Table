@@ -36,3 +36,10 @@ La première ouverture doit se faire en ligne. Une fois les fichiers mis en cach
 - L'état de la partie n'est pas encore restauré après fermeture ou actualisation : termine ou note la partie avant de recharger la page.
 - Le chronomètre fait se coucher automatiquement un joueur lorsque le temps expire ; désactive-le si cette règle ne convient pas à votre table.
 - Les tests automatisés couvrent les calculs de pots annexes, le remboursement des mises non suivies, l'éligibilité des gagnants, la réouverture des relances et le partage des jetons. Une partie physique d'essai reste recommandée avant une longue session.
+
+
+## Version 4 — tailles rapides et big blinds
+- Les montants du pot, des tapis, des mises et des montants à suivre affichent aussi leur équivalent en BB (grosse blinde).
+- Les boutons rapides de mise (% du pot) et de relance (multiplicateur de la mise actuelle) sont configurables au démarrage.
+- Les préférences de tailles rapides sont enregistrées localement sur l'appareil via `localStorage`. Elles ne sont pas encore synchronisées entre appareils : cela viendra avec la version multijoueur en ligne.
+- Le montant peut être réglé avec le curseur ou saisi directement dans le champ numérique.
