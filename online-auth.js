@@ -44,7 +44,7 @@
   async function refreshLobby() {
     if (!currentRoomId) return false;
     const [{ data: room, error: roomError }, { data: players, error: playersError }] = await Promise.all([
-      client.from("poker_rooms").select("id,name,room_code,status,max_players,mode").eq("id", currentRoomId).single(),
+      client.from("poker_rooms").select("id,name,room_code,status,max_players,mode,host_user_id").eq("id", currentRoomId).single(),
       client.from("room_players").select("display_name,seat_number,is_host,status").eq("room_id", currentRoomId).neq("status", "left").order("seat_number")
     ]);
     if (roomError || playersError) {
@@ -60,7 +60,13 @@
       li.textContent = `Place ${player.seat_number} — ${player.display_name}${player.is_host ? " (hôte)" : ""}`;
       $("lobbyPlayers").append(li);
     });
-    $("lobbyStatus").textContent = `${players.length} / ${room.max_players} joueurs · ${room.status === "lobby" ? "En attente du lancement" : room.status}`;
+    const statusText = room.status === "lobby" ? "En attente du lancement" : room.status === "playing" ? "Partie lancée par l'hôte" : room.status;
+    $("lobbyStatus").textContent = `${players.length} / ${room.max_players} joueurs · ${statusText}`;
+    const isHost = !!currentUser && room.host_user_id === currentUser.id;
+    const startBtn = $("startGameBtn");
+    startBtn.classList.toggle("hidden", !(isHost && room.status === "lobby"));
+    startBtn.disabled = players.length < 2;
+    startBtn.textContent = players.length < 2 ? "Lancer la partie (2 joueurs minimum)" : "Lancer la partie";
     $("onlineLobby").classList.remove("hidden");
     return true;
   }
@@ -135,6 +141,15 @@
     const row = Array.isArray(data) ? data[0] : data;
     if (!row?.joined_room_id) { setMessage("Réponse inattendue du serveur.", true); return; }
     if (await enterRoom(row.joined_room_id)) setMessage("Tu as rejoint la partie !");
+  });
+  $("startGameBtn").addEventListener("click", async () => {
+    if (!currentUser || !currentRoomId) return;
+    const btn = $("startGameBtn");
+    btn.disabled = true; setMessage("Lancement de la partie…");
+    const { error } = await client.rpc("start_room", { p_room_id: currentRoomId });
+    if (error) { console.error("start_room:", error); setMessage("Lancement impossible : " + error.message, true); btn.disabled = false; return; }
+    await refreshLobby();
+    setMessage("Partie lancée ! La table de jeu en ligne arrive à la prochaine étape.");
   });
   $("refreshLobbyBtn").addEventListener("click", refreshLobby);
   $("leaveLobbyBtn").addEventListener("click", () => { currentRoomId = null; $("onlineLobby").classList.add("hidden"); if (roomChannel) client.removeChannel(roomChannel); roomChannel = null; setMessage("Tu as quitté l'affichage du lobby. Ton inscription à la partie est conservée pour permettre une reconnexion."); });
