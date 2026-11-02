@@ -42,12 +42,16 @@
     showLoggedIn(user, profile?.display_name || user.user_metadata?.display_name);
   }
   async function refreshLobby() {
-    if (!currentRoomId) return;
+    if (!currentRoomId) return false;
     const [{ data: room, error: roomError }, { data: players, error: playersError }] = await Promise.all([
       client.from("poker_rooms").select("id,name,room_code,status,max_players,mode").eq("id", currentRoomId).single(),
       client.from("room_players").select("display_name,seat_number,is_host,status").eq("room_id", currentRoomId).neq("status", "left").order("seat_number")
     ]);
-    if (roomError || playersError) { setMessage("Impossible d'actualiser le lobby : " + (roomError?.message || playersError?.message), true); return; }
+    if (roomError || playersError) {
+      console.error("Lobby:", roomError || playersError);
+      setMessage("Impossible d'actualiser le lobby : " + (roomError?.message || playersError?.message), true);
+      return false;
+    }
     $("lobbyTitle").textContent = room.name;
     $("lobbyCode").textContent = room.room_code;
     $("lobbyPlayers").replaceChildren();
@@ -58,16 +62,18 @@
     });
     $("lobbyStatus").textContent = `${players.length} / ${room.max_players} joueurs · ${room.status === "lobby" ? "En attente du lancement" : room.status}`;
     $("onlineLobby").classList.remove("hidden");
+    return true;
   }
   async function enterRoom(roomId) {
     currentRoomId = roomId;
-    await refreshLobby();
+    const ok = await refreshLobby();
     if (roomChannel) client.removeChannel(roomChannel);
     roomChannel = client.channel("room-" + roomId)
       .on("postgres_changes", { event: "*", schema: "public", table: "room_players", filter: `room_id=eq.${roomId}` }, refreshLobby)
       .on("postgres_changes", { event: "*", schema: "public", table: "poker_rooms", filter: `id=eq.${roomId}` }, refreshLobby)
       .subscribe();
-    $("onlineLobby").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (ok) $("onlineLobby").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return ok;
   }
 
   $("signInForm").addEventListener("submit", async (event) => {
@@ -117,7 +123,7 @@
     if (error) { setMessage("Création impossible : " + error.message, true); return; }
     const row = Array.isArray(data) ? data[0] : data;
     if (!row?.created_room_id) { setMessage("La partie a été créée, mais sa réponse est inattendue. Actualise le lobby.", true); return; }
-    await enterRoom(row.created_room_id); setMessage("Partie créée ! Partage le code avec tes amis.");
+    if (await enterRoom(row.created_room_id)) setMessage("Partie créée ! Partage le code avec tes amis.");
   });
   $("joinOnlineForm").addEventListener("submit", async (event) => {
     event.preventDefault(); if (!currentUser) return;
@@ -128,7 +134,7 @@
     if (error) { setMessage("Impossible de rejoindre : " + error.message, true); return; }
     const row = Array.isArray(data) ? data[0] : data;
     if (!row?.joined_room_id) { setMessage("Réponse inattendue du serveur.", true); return; }
-    await enterRoom(row.joined_room_id); setMessage("Tu as rejoint la partie !");
+    if (await enterRoom(row.joined_room_id)) setMessage("Tu as rejoint la partie !");
   });
   $("refreshLobbyBtn").addEventListener("click", refreshLobby);
   $("leaveLobbyBtn").addEventListener("click", () => { currentRoomId = null; $("onlineLobby").classList.add("hidden"); if (roomChannel) client.removeChannel(roomChannel); roomChannel = null; setMessage("Tu as quitté l'affichage du lobby. Ton inscription à la partie est conservée pour permettre une reconnexion."); });
